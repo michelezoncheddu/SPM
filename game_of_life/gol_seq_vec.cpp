@@ -1,10 +1,10 @@
-#include <cstdlib>
-#include <ctime>
 #include <iostream>
 #include <thread>
 #include <vector>
 
-int count_alive_neighbours(const std::vector<std::vector<int>> &board, size_t row, size_t col, size_t rows, size_t cols) {
+using namespace std;
+
+int count_alive_neighbours(const vector<vector<int>> &board, size_t row, size_t col) {
     int n_alive{0};
 
     for (int i = -1; i <= 1; ++i)
@@ -25,28 +25,28 @@ int compute_future(int alive, int alive_neighbours) {
         return alive;
 }
 
-void update(const std::vector<std::vector<int>> &board, std::vector<std::vector<int>> &future, size_t rows, size_t cols) {
-    for (size_t i = 1; i < rows - 1; ++i) {
+void update(const vector<vector<int>> &board, vector<vector<int>> &future) {
+    for (size_t i = 1; i < board.size() - 1; ++i) {
         #pragma GCC ivdep
-        for (size_t j = 1; j < cols - 1; ++j) {
-            int alive_neighbours = count_alive_neighbours(board, i, j, rows, cols);
+        for (size_t j = 1; j < board[i].size() - 1; ++j) {
+            int alive_neighbours = count_alive_neighbours(board, i, j);
             future[i][j] = compute_future(board[i][j], alive_neighbours);
         }
     }
 }
 
-void print(std::vector<std::vector<int>> &board, size_t rows, size_t cols) {
-    std::string border(cols + 2, '-');
+void print(const vector<vector<int>> &board) {
+    string border(board[0].size() + 2, '-');
 
-    std::cout << border << std::endl;
-    for (size_t i = 0; i < rows; ++i) {
-        std::cout << '|';
-        for (size_t j = 0; j < cols; ++j)
-            std::cout << (board[i][j] ? '*' : ' ');
-        std::cout << '|' << std::endl;
+    cout << border << endl;
+    for (size_t i = 0; i < board.size(); ++i) {
+        cout << '|';
+        for (size_t j = 0; j < board[i].size(); ++j)
+            cout << (board[i][j] ? '*' : ' ');
+        cout << '|' << endl;
     }
-    std::cout << border << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    cout << border << endl;
+    this_thread::sleep_for(chrono::milliseconds(50));
 }
 
 int main(int argc, char const *argv[]) {
@@ -55,25 +55,25 @@ int main(int argc, char const *argv[]) {
     const unsigned long generations{1000};
 
     // boards allocation
-    std::vector<std::vector<int>> board(rows, std::vector(cols, 0));
-    std::vector<std::vector<int>> future(rows, std::vector(cols, 0));
+    vector<vector<int>> board(rows, vector(cols, 0));
+    vector<vector<int>> future(rows, vector(cols, 0));
 
     // board initialization
-    std::srand(std::time(nullptr));
-    for (size_t i = 1; i < 2; ++i)
-        for (size_t j = 1; j < cols - 1; ++j)
-            board[i][j] = std::rand() % 3;
+    srand(time(nullptr));
+    for (size_t i = 1; i < board.size() - 1; ++i)
+        for (size_t j = 1; j < board[i].size() - 1; ++j)
+            board[i][j] = rand() % 2;
     
-    /* std::cout << "0/" << generations << std::endl;
-    print(board, rows, cols); */
+    /* cout << "0/" << generations << endl;
+    print(board); */
 
     for (unsigned long it = 0; it < generations; ++it) {
-        update(board, future, rows, cols);
+        update(board, future);
         board.swap(future);
 
-        /* std::cout << std::string(20, '\n'); // "clear" the screen
-        std::cout << it + 1 << "/" << generations << std::endl;
-        print(board, rows, cols); */
+        /* cout << string(20, '\n'); // "clear" the screen
+        cout << it + 1 << "/" << generations << endl;
+        print(board); */
     }
 
     return 0;
