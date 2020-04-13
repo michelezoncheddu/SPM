@@ -21,8 +21,7 @@ int count_alive_neighbours(const board_t &board, size_t row, size_t col, size_t 
 
     for (size_t i = row + sr; i <= row + er; ++i)
         for (size_t j = col + sc; j <= col + ec; ++j)
-            if (board[i][j].alive)
-                ++n_alive;
+            n_alive += board[i][j].alive;
 
     n_alive -= board[row][col].alive; // remove myself from the count
 
@@ -50,18 +49,23 @@ void update(const board_t &board, size_t rows, size_t cols) {
 }
 
 void print(const board_t &board, size_t rows, size_t cols) {
+    std::string border(cols + 2, '-');
+
+    std::cout << border << std::endl;
     for (size_t i = 0; i < rows; ++i) {
+        std::cout << '|';
         for (size_t j = 0; j < cols; ++j)
             std::cout << (board[i][j].alive ? '*' : ' ');
-        std::cout << std::endl;
+        std::cout << '|' << std::endl;
     }
-    std::cout << "---------------------------------------" << std::endl;
+    std::cout << border << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 int main(int argc, char const *argv[]) {
     // TODO: from command line
-    const size_t rows{20}, cols{20};
-    const unsigned long generations{200};
+    const size_t rows{70}, cols{200};
+    const unsigned long generations{5000};
 
     // board allocation
     board_t board = new cell_t*[rows];
@@ -70,14 +74,19 @@ int main(int argc, char const *argv[]) {
 
     // board initialization
     std::srand(std::time(nullptr));
-    for (size_t i = 0; i < rows; ++i)
+    for (size_t i = 0; i < 1; ++i)
         for (size_t j = 0; j < cols; ++j)
-            board[i][j].alive = std::rand() % 2;
+            board[i][j].alive = true; //std::rand() % 3;
     
+    std::cout << "0/" << generations << std::endl;
+    print(board, rows, cols);
+
     for (unsigned long it = 0; it < generations; ++it) {
         update(board, rows, cols);
+
+        std::cout << std::string(20, '\n'); // "clear" the screen
+        std::cout << it + 1 << "/" << generations << std::endl;
         print(board, rows, cols);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     for (size_t i = 0; i < rows; ++i)
