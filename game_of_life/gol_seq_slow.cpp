@@ -19,9 +19,9 @@ int count_alive_neighbours(const board_t &board, size_t row, size_t col, size_t 
     const int er{row < rows - 1 ? 1 : 0}; // end row
     const int ec{col < cols - 1 ? 1 : 0}; // end column
 
-    for (size_t i = row + sr; i <= row + er; ++i)
-        for (size_t j = col + sc; j <= col + ec; ++j)
-            n_alive += board[i][j].alive;
+    for (int i = sr; i <= er; ++i)
+        for (int j = sc; j <= ec; ++j)
+            n_alive += board[row + i][col + j].alive;
 
     n_alive -= board[row][col].alive; // remove myself from the count
 
@@ -68,7 +68,7 @@ void print(const board_t &board, size_t rows, size_t cols) {
 
 int main(int argc, char const *argv[]) {
     // TODO: from command line
-    const size_t rows{70}, cols{150};
+    const size_t rows{1000}, cols{1000};
     const unsigned long generations{1000};
 
     // board allocation
@@ -82,15 +82,15 @@ int main(int argc, char const *argv[]) {
         for (size_t j = 0; j < cols; ++j)
             board[i][j].alive = true; //std::rand() % 3;
     
-    std::cout << "0/" << generations << std::endl;
-    print(board, rows, cols);
+    /*std::cout << "0/" << generations << std::endl;
+    print(board, rows, cols);*/
 
     for (unsigned long it = 0; it < generations; ++it) {
         update(board, rows, cols);
 
-        std::cout << std::string(20, '\n'); // "clear" the screen
+        /*std::cout << std::string(20, '\n'); // "clear" the screen
         std::cout << it + 1 << "/" << generations << std::endl;
-        print(board, rows, cols);
+        print(board, rows, cols);*/
     }
 
     for (size_t i = 0; i < rows; ++i)

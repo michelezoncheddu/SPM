@@ -4,18 +4,6 @@
 
 using namespace std;
 
-int count_alive_neighbours(const vector<vector<int>> &board, size_t row, size_t col) {
-    int n_alive{0};
-
-    for (int i = -1; i <= 1; ++i)
-        for (int j = -1; j <= 1; ++j)
-            n_alive += board[row + i][col + j];
-
-    n_alive -= board[row][col]; // remove myself from the count
-
-    return n_alive;
-}
-
 int compute_future(int alive, int alive_neighbours) {
     if (alive_neighbours < 2 || alive_neighbours > 3)
         return 0;
@@ -29,7 +17,10 @@ void update(const vector<vector<int>> &board, vector<vector<int>> &future) {
     for (size_t i = 1; i < board.size() - 1; ++i) {
         #pragma GCC ivdep
         for (size_t j = 1; j < board[i].size() - 1; ++j) {
-            int alive_neighbours = count_alive_neighbours(board, i, j);
+            int alive_neighbours =
+                board[i - 1][j - 1] + board[i - 1][j] + board[i - 1][j + 1] +
+                board[i][j - 1] + board[i][j + 1] +
+                board[i + 1][j - 1] + board[i + 1][j] + board[i + 1][j + 1];
             future[i][j] = compute_future(board[i][j], alive_neighbours);
         }
     }
@@ -50,23 +41,31 @@ void print(const vector<vector<int>> &board) {
 }
 
 int main(int argc, char const *argv[]) {
-    // TODO: from command line
-    const size_t rows{1000}, cols{1000};
-    const unsigned long generations{1000};
+    if (argc < 5) {
+        cout << "Usage is " << argv[0]
+             << " rows cols generations seed" << endl;
+        return -1;
+    }
+
+    const size_t rows = atol(argv[1]);
+    const size_t cols = atol(argv[2]);
+    const unsigned long generations = atol(argv[3]);
+    const int seed = atoi(argv[4]);
 
     // boards allocation
     vector<vector<int>> board(rows, vector(cols, 0));
     vector<vector<int>> future(rows, vector(cols, 0));
 
     // board initialization
-    srand(time(nullptr));
+    srand(seed);
     for (size_t i = 1; i < board.size() - 1; ++i)
         for (size_t j = 1; j < board[i].size() - 1; ++j)
             board[i][j] = rand() % 2;
     
     /* cout << "0/" << generations << endl;
     print(board); */
-
+    
+    auto t0 = chrono::system_clock::now();
     for (unsigned long it = 0; it < generations; ++it) {
         update(board, future);
         board.swap(future);
@@ -75,6 +74,9 @@ int main(int argc, char const *argv[]) {
         cout << it + 1 << "/" << generations << endl;
         print(board); */
     }
-
+    auto elapsed = chrono::duration_cast<chrono::milliseconds>(
+                       chrono::system_clock::now() - t0)
+                       .count();
+    cout << "Sequential execution took " << elapsed << " msecs" << endl;
     return 0;
 }

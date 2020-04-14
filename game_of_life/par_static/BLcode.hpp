@@ -4,6 +4,7 @@ class Source {
    public:
     virtual OUT next() = 0;
     virtual bool hasNext() = 0;
+    virtual void feedback_notify();
 };
 
 // business logic to compute a task
@@ -14,8 +15,12 @@ class Worker {
 };
 
 // processing the results: accumulate the stream contents
-template <typename IN>
+template <typename IN, typename OUT>
 class Drain {
    public:
-    virtual void process(IN x) = 0;
+    /**
+     * par x:  # of rows computed
+     * return: feedback
+     */
+    virtual OUT process(IN x) = 0;
 };
