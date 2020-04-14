@@ -12,17 +12,18 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    if (argc < 6) {
+    if (argc < 7) {
         cout << "Usage is " << argv[0]
-             << " rows cols generations seed nw" << endl;
+             << " rows cols generations chunk_size seed nw" << endl;
         return -1;
     }
 
     const size_t rows = atol(argv[1]);
     const size_t cols = atol(argv[2]);
     const unsigned long generations = atol(argv[3]);
-    const int seed = atoi(argv[4]);
-    const int nw = atoi(argv[5]);
+    const int chunk_size = atoi(argv[4]);
+    const int seed = atoi(argv[5]);
+    const int nw = atoi(argv[6]);
 
     // boards allocation
     vector<vector<int>> board(rows, vector(cols, 0));
@@ -35,7 +36,7 @@ int main(int argc, char* argv[]) {
             board[i][j] = rand() % 2;
 
     // business logic code components
-    MySource s{board, 0, nw};
+    MySource s{board, 0, nw, chunk_size};
     MyWorker f{board, future, 0};
     MyDrain d{board, future, 0};
 
@@ -44,7 +45,7 @@ int main(int argc, char* argv[]) {
     const int GOON = 1;
 
     // declare a queue for the input tasks
-    syque<pair<int, int>> *t_queue = new syque<pair<int, int>>[nw];
+    syque<pair<int, int>> t_queue;
     // one for the results
     syque<int> r_queue;
     // and one for the feedback
@@ -53,12 +54,10 @@ int main(int argc, char* argv[]) {
     // kind of three concurrent activities
     // place input tasks into the input queue
     auto emit_task = [&](MySource s) {
-        int worker_n = 0;
         for (unsigned long i = 0; i < generations; ++i) {
             while (s.hasNext()) {
                 auto t = s.next();
-                t_queue[worker_n].push(t);
-                worker_n = (worker_n + 1) % nw;
+                t_queue.push(t);
             }
             // wait feedback
             if (f_queue.pop() == GOON)
@@ -68,7 +67,7 @@ int main(int argc, char* argv[]) {
         }
         // for as many workers to terminate, push EOS
         for (int i = 0; i < nw; i++)
-            t_queue[i].push(EOS);
+            t_queue.push(EOS);
         return;
     };
 
@@ -86,7 +85,7 @@ int main(int argc, char* argv[]) {
     // processing tasks to results in parallel
     auto body = [&](MyWorker w, int wn) {
         while (true) {
-            auto t = t_queue[wn].pop();
+            auto t = t_queue.pop();
             if (t == EOS) {
                 r_queue.push(EOS.first);
                 break; 
@@ -113,7 +112,6 @@ int main(int argc, char* argv[]) {
     auto elapsed = chrono::duration_cast<chrono::milliseconds>(
                        chrono::system_clock::now() - t0)
                        .count();
-    delete[] t_queue;
 
     cout << "Parallel execution with " << nw << " threads took " << elapsed
          << " msecs" << endl;
