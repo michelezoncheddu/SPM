@@ -31,9 +31,7 @@ class MySource : public Source<pair<int, int>> {
 
    public:
     MySource(vector<vector<int>> &board, int ms, int nw, int chunk_size)
-        : board(board), msec(ms), row(1), chunk_size(chunk_size) {
-        //print(board); // initial configuration
-    }
+        : board(board), msec(ms), row(1), chunk_size(chunk_size) {}
 
     // NOTE: it doesn't divide equally in the last partition
     pair<int, int> next() {
@@ -113,13 +111,12 @@ class MyDrain : public Drain<int, bool> {
             return false;
 
         remaining -= x;
-        //cout << "remaining " << remaining << " rows" << endl;
 
         // workers have finished
         if (remaining == 0) {
             remaining = board.size() - 2;
             swap(board, future);
-            //print(board);
+            print(board);
             return true; // send feedback
         }
         return false;

@@ -82,15 +82,15 @@ int main(int argc, char const *argv[]) {
         for (size_t j = 0; j < cols; ++j)
             board[i][j].alive = true; //std::rand() % 3;
     
-    /*std::cout << "0/" << generations << std::endl;
-    print(board, rows, cols);*/
+    std::cout << "0/" << generations << std::endl;
+    print(board, rows, cols);
 
     for (unsigned long it = 0; it < generations; ++it) {
         update(board, rows, cols);
 
-        /*std::cout << std::string(20, '\n'); // "clear" the screen
+        std::cout << std::string(20, '\n'); // "clear" the screen
         std::cout << it + 1 << "/" << generations << std::endl;
-        print(board, rows, cols);*/
+        print(board, rows, cols);
     }
 
     for (size_t i = 0; i < rows; ++i)

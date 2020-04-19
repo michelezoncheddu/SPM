@@ -30,7 +30,6 @@ class MySource : public Source<pair<int, int>> {
 
    public:
     MySource(vector<vector<int>> &board, int ms, int nw) : board(board), msec(ms), row(1) {
-        //print(board); // initial configuration
         chunk_size = (board.size() - 2) / nw;
     }
 
@@ -107,13 +106,12 @@ class MyDrain : public Drain<int, bool> {
             return false;
 
         remaining -= x;
-        //cout << "remaining " << remaining << " rows" << endl;
 
         // workers have finished
         if (remaining == 0) {
             remaining = board.size() - 2;
             swap(board, future);
-            //print(board);
+            print(board);
             return true; // send feedback
         }
         return false;

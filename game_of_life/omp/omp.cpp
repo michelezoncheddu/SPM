@@ -13,7 +13,8 @@ int compute_future(int alive, int alive_neighbours) {
         return alive;
 }
 
-void update(const vector<vector<int>> &board, vector<vector<int>> &future) {
+void update(const vector<vector<int>> &board, vector<vector<int>> &future, int nw) {
+    #pragma omp parallel for num_threads(nw)
     for (size_t i = 1; i < board.size() - 1; ++i) {
         #pragma GCC ivdep
         for (size_t j = 1; j < board[i].size() - 1; ++j) {
@@ -41,9 +42,9 @@ void print(const vector<vector<int>> &board) {
 }
 
 int main(int argc, char const *argv[]) {
-    if (argc < 5) {
+    if (argc < 6) {
         cout << "Usage is " << argv[0]
-             << " rows cols generations seed" << endl;
+             << " rows cols generations seed nw" << endl;
         return -1;
     }
 
@@ -51,6 +52,7 @@ int main(int argc, char const *argv[]) {
     const size_t cols = atol(argv[2]);
     const unsigned long generations = atol(argv[3]);
     const int seed = atoi(argv[4]);
+    const int nw = atoi(argv[5]);
 
     // boards allocation
     vector<vector<int>> board(rows, vector(cols, 0));
@@ -64,16 +66,15 @@ int main(int argc, char const *argv[]) {
     
     auto t0 = chrono::system_clock::now();
     for (unsigned long it = 0; it < generations; ++it) {
-        update(board, future);
+        update(board, future, nw);
         board.swap(future);
 
-        /* cout << string(20, '\n'); // "clear" the screen
         cout << it + 1 << "/" << generations << endl;
-        print(board); */
+        print(board);
     }
     auto elapsed = chrono::duration_cast<chrono::milliseconds>(
                        chrono::system_clock::now() - t0)
                        .count();
-    cout << "Sequential execution took " << elapsed << " msecs" << endl;
+    cout << "Parallel execution with " << nw << " workers took " << elapsed << " msecs" << endl;
     return 0;
 }
