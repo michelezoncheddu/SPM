@@ -54,6 +54,7 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
         pairs = new pair_t[nw];
         primes.reserve((size_t)(n2 - n1) / log(n1));
         store.reserve(nw);
+        zeros = 0;
     }
     ~Emitter() {
         if (pairs)
@@ -82,17 +83,13 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
             return GO_ON;
         }
         // compute v from feedback
-        store.push_back(v);
+        if (v->size() == 0)
+            ++zeros;
+        else
+            store.push_back(v);
 
         // all workers have terminated
-        if ((int)store.size() == nw) {
-            store.erase(
-                std::remove_if(store.begin(), store.end(),
-                    [](auto v) { return v->size() == 0; }
-                ),
-                store.end()
-            );
-
+        if (store.size() + zeros == nw) {
             while (store.size() > 0) { // merging phase
                 std::pair<ull, int> min{n2 + 1, -1}; // value, index
 
@@ -109,7 +106,7 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
     }
     
     const ull n1, n2;
-    int nw;
+    int nw, zeros;
     pair_t *pairs = nullptr;
     std::vector<ull> primes;
     std::vector<std::vector<ull>*> store;
