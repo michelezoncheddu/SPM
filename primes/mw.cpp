@@ -32,8 +32,6 @@
 #include <ff/ff.hpp>
 #include <ff/farm.hpp>
 
-#include <unistd.h>
-
 using namespace ff;
 
 using ull = unsigned long long;
