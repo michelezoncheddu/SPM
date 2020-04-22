@@ -1,8 +1,12 @@
-# no files without extension
+# No files without extension...
 *
 !/**/
 !*.*
 
+# ...except for the makefile
+!Makefile
+
+# OS files
 .DS_Store
 ._*
 .fseventsd
@@ -10,4 +14,8 @@
 .TemporaryItems
 .Trashes
 
+# Temporary files
+.~*
+
+# Text editor folder
 .vscode/
