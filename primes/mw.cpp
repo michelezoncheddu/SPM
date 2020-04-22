@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+
 #include <ff/ff.hpp>
 #include <ff/farm.hpp>
 
@@ -37,7 +38,7 @@ using ull = unsigned long long;
 using pair_t = std::pair<ull, ull>;
 
 static bool is_prime(ull n) {
-    if (n <= 3)  return n > 1; // 1 is not prime!
+    if (n <= 3) return n > 1; // 1 is not prime!
     
     if (n % 2 == 0 || n % 3 == 0) return false;
 
@@ -52,14 +53,19 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
     Emitter(ull n1, ull n2, int nw) : n1(n1), n2(n2), nw(nw) {
         pairs = new pair_t[nw];
         primes.reserve((size_t)(n2 - n1) / log(n1));
+        store.reserve(nw);
     }
-    ~Emitter() { if (pairs) delete[] pairs; }
+    ~Emitter() {
+        if (pairs)
+            delete[] pairs;
+    }
 
     pair_t* svc(std::vector<ull> *v) {
         if (v == nullptr) {
             const ull range = n2 - n1 + 1;
             const ull partsize{range / (nw + 1)};
-            ull remaining{range % (nw + 1)}, begin{n1 + partsize};
+            ull begin{n1 + partsize};
+            int remaining = range % (nw + 1);
             
             for (int i = 0; i < nw; ++i) {
                 long end = begin + partsize + (remaining > 0 ? 1 : 0);	    
@@ -68,6 +74,7 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
                 --remaining;
                 begin = end;
             }
+
             broadcast_task(EOS);
             for (ull number = n1; number < n1 + partsize; ++number)
                 if (is_prime(number))
@@ -75,30 +82,52 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
             return GO_ON;
         }
         // compute v from feedback
+        store.push_back(v);
 
+        // all workers have terminated
+        if ((int)store.size() == nw) {
+            store.erase(
+                std::remove_if(store.begin(), store.end(),
+                    [](auto v) { return v->size() == 0; }
+                ),
+                store.end()
+            );
+
+            while (store.size() > 0) { // merging phase
+                std::pair<ull, int> min{n2 + 1, -1}; // value, index
+
+                // finding minimum value
+                for (ull i = 0; i < store.size(); ++i)
+                    if ((*store[i])[0] < min.first)
+                        min = {(*store[i])[0], i};
+
+                primes.insert(primes.end(), store[min.second]->begin(), store[min.second]->end());
+                store.erase(store.begin() + min.second);
+            }
+        }
         return GO_ON;
     }
     
     const ull n1, n2;
-    const int nw;
+    int nw;
     pair_t *pairs = nullptr;
     std::vector<ull> primes;
+    std::vector<std::vector<ull>*> store;
 };
 
 struct Worker:ff_node_t<pair_t, std::vector<ull>> {
     Worker(int nprimes) {
-        primes = std::vector<ull>(nprimes);
+        primes = new std::vector<ull>(nprimes);
     }
 
     std::vector<ull>* svc(pair_t* in) {
         const ull begin{in->first}, end{in->second};
         for (ull number = begin; number <= end; ++number)
             if (is_prime(number))
-                primes.push_back(number);
-        primes.push_back(0);
-        return &primes;
+                primes->push_back(number);
+        return primes;
     }
-    std::vector<ull> primes;
+    std::vector<ull> *primes;
 };
 
 int main(int argc, char *argv[]) {
@@ -128,6 +157,10 @@ int main(int argc, char *argv[]) {
         error("running farm");
         return -1;
     }
+    
+    for (auto x : E.primes)
+        std::cout << x << std::endl;
+
     ffTime(STOP_TIME);
     std::cout << "Time: " << ffTime(GET_TIME) << " (ms)" << std::endl;
     return 0;
