@@ -32,6 +32,8 @@
 #include <ff/ff.hpp>
 #include <ff/farm.hpp>
 
+#include <unistd.h>
+
 using namespace ff;
 
 using ull = unsigned long long;
@@ -89,7 +91,7 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
             store.push_back(v);
 
         // all workers have terminated
-        if (store.size() + zeros == nw) {
+        if ((int)store.size() + zeros == nw) {
             while (store.size() > 0) { // merging phase
                 std::pair<ull, int> min{n2 + 1, -1}; // value, index
 
@@ -114,7 +116,8 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
 
 struct Worker:ff_node_t<pair_t, std::vector<ull>> {
     Worker(int nprimes) {
-        primes = new std::vector<ull>(nprimes);
+        primes = new std::vector<ull>;
+        primes->reserve(nprimes);
     }
 
     std::vector<ull>* svc(pair_t* in) {
@@ -129,13 +132,16 @@ struct Worker:ff_node_t<pair_t, std::vector<ull>> {
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
-        std::cout << "Usage is: " << argv[0] << " start end nw" << std::endl;
+        std::cout << "Usage is: " << argv[0] << " start end nw [print=off|on]" << std::endl;
         return -1;
     }
 
     ull start = std::stoll(argv[1]);
     ull end   = std::stoll(argv[2]);
     int nw = atoi(argv[3]);
+    bool print_primes = false;
+    if (argc >= 5) 
+        print_primes = (std::string(argv[4]) == "on");
     
     ffTime(START_TIME);
     size_t nprimes = (size_t)((end - start) / log(start)) / nw;
@@ -154,11 +160,13 @@ int main(int argc, char *argv[]) {
         error("running farm");
         return -1;
     }
-    
-    for (auto x : E.primes)
-        std::cout << x << std::endl;
-
+    std::cout << E.primes.size() << " primes found" << std::endl;
     ffTime(STOP_TIME);
+
+    if (print_primes)
+        for (auto x : E.primes)
+            std::cout << x << " ";
+
     std::cout << "Time: " << ffTime(GET_TIME) << " (ms)" << std::endl;
     return 0;
 }
