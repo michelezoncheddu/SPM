@@ -82,7 +82,8 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
                     primes.push_back(number);
             return GO_ON;
         }
-        // compute v from feedback
+
+        // v from feedback
         if (v->size() == 0)
             ++zeros;
         else
@@ -134,15 +135,15 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    ull start = std::stoll(argv[1]);
-    ull end   = std::stoll(argv[2]);
-    int nw = atoi(argv[3]);
+    const ull start = std::stoll(argv[1]);
+    const ull end   = std::stoll(argv[2]);
+    const int nw = atoi(argv[3]);
     bool print_primes = false;
     if (argc >= 5) 
         print_primes = (std::string(argv[4]) == "on");
     
     ffTime(START_TIME);
-    size_t nprimes = (size_t)((end - start) / log(start)) / nw;
+    const size_t nprimes = (size_t)((end - start) / log(start)) / nw; // vector length for every worker
 
     Emitter E(start, end, nw - 1);
     ff_Farm<> farm([&]() {

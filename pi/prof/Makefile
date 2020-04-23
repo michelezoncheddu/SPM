@@ -23,37 +23,45 @@
 #
 # ---------------------------------------------------------------------------
 
-
-FF_ROOT = /usr/local/include/fastflow
-
+# 
+# FF_ROOT     points to the FastFlow root directory (i.e.
+#             the one containing the ff directory).
 ifndef FF_ROOT 
-FF_ROOT	= ${HOME}/fastflow
+FF_ROOT		= ${HOME}/fastflow
 endif
 
-CXX			= g++-9 -std=c++17 -Wall #-pedantic
-INCLUDES	= -I $(FF_ROOT)
-CXXFLAGS	= #-g -DTRACE_FASTFLOW -DNO_DEFAULT_MAPPING -DBLOCKING_MODE -DFF_BOUNDED_BUFFER
+CXX		= g++ -std=c++17 
+INCLUDES	= -I $(FF_ROOT) 
+CXXFLAGS  	= -g  #-DTRACE_FASTFLOW -DNO_DEFAULT_MAPPING -DBLOCKING_MODE -DFF_BOUNDED_BUFFER
 
 LDFLAGS 	= -pthread 
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
-TARGETS 	= primes	\
-			  mw		\
-			  pf
+TARGETS1	= pi-ffpf     \
+		  pi-fffarm   \
+		  pi-ffmw
+
+TARGETS2	= pi-seq      \
+		  pi-parfor1
 
 
 .PHONY: all clean cleanall
-.SUFFIXES: .cpp
+.SUFFIXES: .cpp 
 
 
 %: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $(OPTFLAGS) -o $@ $< $(LDFLAGS)
 
-all: targets
+all		: targets1 targets2
 
-targets: $(TARGETS)
+targets1        : $(TARGETS1)
+targets2        : LDFLAGS += -fopenmp 
+targets2 	: $(TARGETS2)
 
-clean:
-	rm -f $(TARGETS)
-cleanall: clean
+clean		: 
+	rm -f $(TARGETS1) $(TARGETS2)
+cleanall	: clean
 	\rm -f *.o *~
+
+
+
