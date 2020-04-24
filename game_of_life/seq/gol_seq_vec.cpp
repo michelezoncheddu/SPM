@@ -4,7 +4,9 @@
 
 using namespace std;
 
-int compute_future(int alive, int alive_neighbours) {
+using INT = short int;
+
+INT compute_future(INT alive, INT alive_neighbours) {
     if (alive_neighbours < 2 || alive_neighbours > 3)
         return 0;
     else if (alive_neighbours == 3)
@@ -13,11 +15,11 @@ int compute_future(int alive, int alive_neighbours) {
         return alive;
 }
 
-void update(const vector<vector<int>> &board, vector<vector<int>> &future) {
+void update(const vector<vector<INT>> &board, vector<vector<INT>> &future) {
     for (size_t i = 1; i < board.size() - 1; ++i) {
         #pragma GCC ivdep
         for (size_t j = 1; j < board[i].size() - 1; ++j) {
-            int alive_neighbours =
+            INT alive_neighbours =
                 board[i - 1][j - 1] + board[i - 1][j] + board[i - 1][j + 1] +
                 board[i][j - 1] + board[i][j + 1] +
                 board[i + 1][j - 1] + board[i + 1][j] + board[i + 1][j + 1];
@@ -26,7 +28,7 @@ void update(const vector<vector<int>> &board, vector<vector<int>> &future) {
     }
 }
 
-void print(const vector<vector<int>> &board) {
+void print(const vector<vector<INT>> &board) {
     string border(board[0].size() + 2, '-');
 
     cout << border << endl;
@@ -53,8 +55,12 @@ int main(int argc, char const *argv[]) {
     const int seed = atoi(argv[4]);
 
     // boards allocation
-    vector<vector<int>> board(rows, vector(cols, 0));
-    vector<vector<int>> future(rows, vector(cols, 0));
+    vector<vector<INT>> board(rows);
+    vector<vector<INT>> future(rows);
+    for (auto &v : board)
+        v = vector<INT>(cols);
+    for (auto &v : future)
+        v = vector<INT>(cols);
 
     // board initialization
     srand(seed);
