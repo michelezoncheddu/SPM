@@ -53,14 +53,14 @@ int main(int argc, char *argv[]) {
 
     const ull start = std::stoll(argv[1]);
     const ull end   = std::stoll(argv[2]);
-    const int nw = atoi(argv[3]);
+    const auto nw = atoi(argv[3]);
     bool print_primes = false;
     if (argc >= 5) 
         print_primes = (std::string(argv[4]) == "on");
     
     ffTime(START_TIME);
-    const size_t nprimes = (size_t)((end - start) / log(start));
-    const size_t nprimes_w = nprimes / nw;
+    const auto nprimes = (size_t)((end - start) / log(start));
+    const auto nprimes_w = nprimes / nw;
     std::vector<ull> primes(nprimes);
     
     ParallelFor pf(nw);

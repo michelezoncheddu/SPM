@@ -37,9 +37,11 @@ CXXFLAGS	= #-g -DTRACE_FASTFLOW -DNO_DEFAULT_MAPPING -DBLOCKING_MODE -DFF_BOUNDE
 LDFLAGS 	= -pthread 
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
-TARGETS 	= primes	\
-			  mw		\
-			  pf
+TARGETS 	= primes		\
+			  mw			\
+			  pf_private	\
+			  pf_shared 	\
+			  pf_shared_no_fs
 
 
 .PHONY: all clean cleanall
