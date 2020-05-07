@@ -47,7 +47,7 @@ Tout dc_par(Tin input,
 
         mutex.lock();
         if (active + (int)subproblems.size() - 1 <= nw) { // parallel version
-            active += (int)subproblems.size() - 1;
+            active += subproblems.size() - 1;
             mutex.unlock();
 
             std::vector<std::future<Tout>> futures;
@@ -81,11 +81,11 @@ Tout dc_par(Tin input,
     }
 }
 
-bool basecase(TIN v) {
+auto basecase(TIN v) {
     return v.size() == 1;
 }
 
-TOUT solve(TIN v) {
+auto solve(TIN v) {
     return v[0];
 }
 
@@ -95,7 +95,7 @@ std::vector<TIN> divide(TIN v) {
     return {v1, v2};
 }
 
-TOUT conquer(std::vector<TOUT> v) {
+auto conquer(std::vector<TOUT> v) {
     return std::accumulate(v.begin(), v.end(), 0);
 }
 
