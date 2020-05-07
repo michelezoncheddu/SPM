@@ -37,7 +37,9 @@ CXXFLAGS	= #-g -DTRACE_FASTFLOW -DNO_DEFAULT_MAPPING -DBLOCKING_MODE -DFF_BOUNDE
 LDFLAGS 	= -pthread 
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
-TARGETS 	= dac	\
+TARGETS 	= dac_seq	\
+			  dac_par 	\
+			  dac_par2
 
 
 .PHONY: all clean cleanall
