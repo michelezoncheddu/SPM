@@ -10,7 +10,8 @@
 using TIN = std::vector<int>;
 using TOUT = int;
 
-int active, nw;
+int active; // number of active threads
+int nw;
 std::mutex mutex;
 
 template <typename Tin, typename Tout>
@@ -40,6 +41,9 @@ Tout dc_par(Tin input,
         std::vector<Tin> (*divide)(Tin),
         Tout (*conquer)(std::vector<Tout>)) {
     if (basecase(input)) {
+        mutex.lock();
+        active--;
+        mutex.unlock();
         return solve(input);
     } else {
         auto subproblems = divide(input);
@@ -47,7 +51,7 @@ Tout dc_par(Tin input,
 
         mutex.lock();
         if (active + (int)subproblems.size() - 1 <= nw) { // parallel version
-            active += subproblems.size() - 1;
+            active += subproblems.size() - 1; // minus myself
             mutex.unlock();
 
             std::vector<std::future<Tout>> futures;
@@ -60,24 +64,20 @@ Tout dc_par(Tin input,
                                              divide,
                                              conquer));
             }
-            for (auto &future : futures) {
+            for (auto &future : futures)
                 subresults.push_back(future.get());
-            }
             mutex.lock();
-            active++;
+            active++; // myself
             mutex.unlock();
         } else { // sequential version
             mutex.unlock();
-
             for (auto subproblem : subproblems)
                 subresults.push_back(dc(subproblem, basecase, solve, divide, conquer));
         }
-
-        auto result = conquer(subresults);
         mutex.lock();
         active--;
         mutex.unlock();
-        return result;
+        return conquer(subresults);
     }
 }
 
@@ -105,13 +105,13 @@ int main(int argc, char const *argv[]) {
         return -1;
     }
 
-    const int n  = std::stoi(argv[1]);
+    const int n = std::stoi(argv[1]);
     nw = std::stoi(argv[2]);
-    active = 1;
 
     TIN v(n);
     std::iota(v.begin(), v.end(), 0);
 
+    active = 1;
     auto t0 = std::chrono::system_clock::now();
     auto res = dc_par(v, basecase, solve, divide, conquer);
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
