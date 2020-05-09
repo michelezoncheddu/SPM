@@ -5,6 +5,7 @@
 #include <iostream>
 #include <mutex>
 #include <numeric>
+#include <thread>
 #include <vector>
 
 using TIN = std::vector<int>;
@@ -96,17 +97,17 @@ std::vector<TIN> divide(TIN v) {
 }
 
 auto conquer(std::vector<TOUT> v) {
-    return std::accumulate(v.begin(), v.end(), 0);
+    return v[0] + v[1];
 }
 
 int main(int argc, char const *argv[]) {
-    if (argc < 3) {
-        std::cout << "Usage is: " << argv[0] << " n nw" << std::endl;
+    if (argc < 2) {
+        std::cout << "Usage is: " << argv[0] << " n nw (optional)" << std::endl;
         return -1;
     }
 
     const int n = std::stoi(argv[1]);
-    nw = std::stoi(argv[2]);
+    nw = argc > 2 ? std::stoi(argv[2]) : std::thread::hardware_concurrency();
 
     TIN v(n);
     std::iota(v.begin(), v.end(), 0);

@@ -42,7 +42,7 @@ std::vector<TIN> divide(TIN v) {
 }
 
 TOUT conquer(std::vector<TOUT> v) {
-    return std::accumulate(v.begin(), v.end(), 0);
+    return v[0] + v[1];
 }
 
 int main(int argc, char const *argv[]) {
