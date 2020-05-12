@@ -24,22 +24,15 @@
 # ---------------------------------------------------------------------------
 
 
-FF_ROOT = /usr/local/include/fastflow
 
-ifndef FF_ROOT 
-FF_ROOT	= ${HOME}/fastflow
-endif
+CXX			= g++ -std=c++17 -Wall #-pedantic
+INCLUDES	= -I /usr/local/opt/opencv/include/opencv4
+CXXFLAGS	= #-g
 
-CXX			= g++-9 -std=c++17 -Wall #-pedantic
-INCLUDES	= #-I $(FF_ROOT)
-CXXFLAGS	= #-g -DTRACE_FASTFLOW -DNO_DEFAULT_MAPPING -DBLOCKING_MODE -DFF_BOUNDED_BUFFER
-
-LDFLAGS 	= -pthread
+LDFLAGS 	= `pkg-config --cflags --libs opencv`
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
-TARGETS 	= dac_seq	\
-			  dac_par 	\
-			  dac_par2
+TARGETS 	= test	\
 
 
 .PHONY: all clean cleanall
