@@ -26,7 +26,7 @@
 
 
 CXX			= g++ -std=c++17 -Wall #-pedantic
-INCLUDES	= -I /usr/local/opt/opencv/include/opencv4
+INCLUDES	= #-I
 CXXFLAGS	= #-g
 
 LDFLAGS 	= `pkg-config --cflags --libs opencv`
