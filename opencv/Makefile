@@ -26,10 +26,10 @@
 
 
 CXX			= g++ -std=c++17 -Wall #-pedantic
-INCLUDES	= #-I
+INCLUDES	= -I /usr/local/opt/opencv/include/opencv4
 CXXFLAGS	= #-g
 
-LDFLAGS 	= `pkg-config --cflags --libs opencv`
+LDFLAGS 	= -L /usr/local/opt/opencv/lib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
 TARGETS 	= test	\

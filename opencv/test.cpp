@@ -3,7 +3,6 @@
 // keep in mind that all or some of these includes
 // may change depending on the library installation and version
 #include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
