@@ -32,7 +32,10 @@ CXXFLAGS	= #-g
 LDFLAGS 	= -L /usr/local/opt/opencv/lib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
-TARGETS 	= seq	\
+TARGETS 	= seq			\
+			  par_static	\
+			  par_rr		\
+			  par_dyn		\
 
 
 .PHONY: all clean cleanall

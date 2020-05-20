@@ -69,7 +69,7 @@ struct Emitter:ff_monode_t<std::vector<ull>, pair_t> {
             int remaining = range % (nw + 1);
             
             for (int i = 0; i < nw; ++i) {
-                long end = begin + partsize + (remaining > 0 ? 1 : 0);	    
+                long end = begin + partsize + (remaining > 0 ? 1 : 0);
                 pairs[i] = {begin, end - 1};
                 ff_send_out_to(&pairs[i], i);
                 --remaining;

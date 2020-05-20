@@ -9,11 +9,18 @@
 #include <utimer.cpp>
 
 int main(int argc, char* argv[]) {
+    if (argc < 4) {
+        std::cout << "Usage is: " << argv[0] << " iterations src_path dst_path" << std::endl;
+        return -1;
+    }
+
+    const int it = atoi(argv[1]);
+    const std::string src_path{argv[2]};
+    const std::string dst_path{argv[3]};
+
     // disable integrated multithread support
     cv::setNumThreads(0);
 
-    const std::string src_path{"brina/"};
-    const std::string dst_path{"dest/"};
     std::vector<std::string> imgs;
     
     // read all the jpg files from the source directory
@@ -31,32 +38,17 @@ int main(int argc, char* argv[]) {
 
     cv::Mat src, dst;
 
-    long t1{0}, t2{0}, t3{0}, t4{0}, t;
-    for (const auto &img: imgs) {
-        {
-            utimer timer("imread", &t);
+    auto t0 = std::chrono::system_clock::now();
+    for (int i = 0; i < it; ++i) {
+        for (const auto &img: imgs) {
             src = cv::imread(src_path + img);
-        }
-        t1 += t;
-        {
-            utimer timer("GaussianBlur", &t);
             cv::GaussianBlur(src, dst, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
-        }
-        t2 += t;
-        {
-            utimer timer("Sobel", &t);
             cv::Sobel(dst, dst, -1, 1, 1);
-        }
-        t3 += t;
-        {
-            utimer timer("imwrite", &t);
             cv::imwrite(dst_path + img, dst);
         }
-        t4 += t;
     }
-    std::cout << t1 / imgs.size() << std::endl;
-    std::cout << t2 / imgs.size() << std::endl;
-    std::cout << t3 / imgs.size() << std::endl;
-    std::cout << t4 / imgs.size() << std::endl;
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - t0).count();
+    std::cout << "Sequential execution took " << elapsed << " msecs" << std::endl;
+
     return 0;
 }
