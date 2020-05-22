@@ -31,13 +31,13 @@ class MyWorker : public Worker<int> {
    private:
     const vector<string> imgs;
     const string src_path, dst_path;
-    cv::Mat src, dst;
 
    public:
     MyWorker(const vector<string> imgs, const string src_path, const string dst_path)
         : imgs{imgs}, src_path{src_path}, dst_path{dst_path} {}
 
     void compute(int i) {
+        cv::Mat src, dst;
         const int idx = i % imgs.size();
         src = cv::imread(src_path + imgs[idx]);
         cv::GaussianBlur(src, dst, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
