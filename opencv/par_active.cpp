@@ -3,8 +3,8 @@
 #include <iostream>
 #include <thread>
 
-#include <queue.cpp>
-#include "BLstatic.cpp"
+#include <buffer.cpp>
+#include "BLrr.cpp" // I can use the same BL of the round robin version
 
 using namespace std;
 
@@ -37,25 +37,28 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    MySource s{imgs.size(), it, nw};
-    MyWorker f{imgs, src_path, dst_path};
-    syque<pair<int, int>*> *t_queue = new syque<pair<int, int>*>[nw];
-    pair<int, int> *EOS = nullptr;
+    MySource s(imgs.size(), it);
+    MyWorker f(imgs, src_path, dst_path);
+    buffer<int> *t_queue = new buffer<int>[nw];
+
+    const int EOS = -1;
 
     auto emit_task = [&](MySource s) {
         int worker_n = 0;
         while (s.hasNext()) {
             auto t = s.next();
-            t_queue[worker_n].push(t);
+            while (!t_queue[worker_n].empty())
+                worker_n = (worker_n + 1) % nw;
+            t_queue[worker_n].send(t);
             worker_n = (worker_n + 1) % nw;
         }
         for (int i = 0; i < nw; i++)
-            t_queue[i].push(EOS);
+            t_queue[i].send(EOS);
     };
 
     auto body = [&](MyWorker w, int wn) {
         while (true) {
-            auto t = t_queue[wn].pop();
+            auto t = t_queue[wn].receive();
             if (t == EOS)
                 break; 
             w.compute(t);

@@ -37,9 +37,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-
-    MySource s{imgs.size(), it};
-    MyWorker f{imgs, src_path, dst_path};
+    MySource s(imgs.size(), it);
+    MyWorker f(imgs, src_path, dst_path);
     syque<int> t_queue;
     const int EOS = -1;
 

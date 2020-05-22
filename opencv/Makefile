@@ -29,13 +29,14 @@ CXX			= g++ -std=c++2a -Wall #-pedantic
 INCLUDES	= -I /usr/local/opt/opencv/include/opencv4 -I ../utils
 CXXFLAGS	= #-g
 
-LDFLAGS 	= -L /usr/local/opt/opencv/lib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
+LDFLAGS 	= -L /usr/local/opt/opencv/lib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -pthread
 OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
 TARGETS 	= seq			\
 			  par_static	\
 			  par_rr		\
 			  par_dyn		\
+			  par_active 	\
 
 
 .PHONY: all clean cleanall

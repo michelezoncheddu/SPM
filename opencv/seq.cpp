@@ -36,11 +36,10 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    cv::Mat src, dst;
-
     auto t0 = std::chrono::system_clock::now();
+    cv::Mat src, dst;
     for (int i = 0; i < it; ++i) {
-        for (const auto &img: imgs) {
+        for (auto img: imgs) {
             src = cv::imread(src_path + img);
             cv::GaussianBlur(src, dst, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
             cv::Sobel(dst, dst, -1, 1, 1);
