@@ -23,12 +23,10 @@
 using namespace ff;
 
 struct Task {
-    Task(unsigned char* ptr, size_t size, const std::string& name)
-        : ptr(ptr), size(size), cmp_size(0), filename(name) {}
+    Task(size_t size, const std::string& name)
+        : size(size), filename(name) {}
 
-    unsigned char* ptr;
-    size_t         size;
-    size_t         cmp_size;
+    size_t size;
     const std::string filename;
 };
 
@@ -37,13 +35,9 @@ struct Emitter : ff_node_t<Task> {
 
     // ------------------- utility functions
     // It memory maps the input file and then assigns a task to one Worker
-    bool doWork(const std::string& fname, size_t size) {
-        unsigned char* ptr = nullptr;
-        if (!mapFile(fname.c_str(), size, ptr))
-            return false;
-        Task* t = new Task(ptr, size, fname);
-        ff_send_out(t);  // sending to the next stage
-        return true;
+    void doWork(const std::string& fname, size_t size) {
+        Task* t = new Task(size, fname);
+        ff_send_out(t);
     }
     // walks through the directory tree rooted in dname
     bool walkDir(const std::string& dname, size_t size) {
@@ -69,8 +63,7 @@ struct Emitter : ff_node_t<Task> {
                         error = true;
                 }
             } else {
-                if (!doWork(filename, statbuf.st_size))
-                    error = true;
+                doWork(filename, statbuf.st_size);
             }
         }
         if (errno != 0) {
@@ -94,7 +87,7 @@ struct Emitter : ff_node_t<Task> {
             if (S_ISDIR(statbuf.st_mode)) {
                 success &= walkDir(argv[i], statbuf.st_size);
             } else {
-                success &= doWork(argv[i], statbuf.st_size);
+                doWork(argv[i], statbuf.st_size);
             }
         }
         return EOS;
@@ -114,37 +107,43 @@ struct Emitter : ff_node_t<Task> {
 
 struct Worker : ff_node_t<Task> {
     Task* svc(Task* task) {
-        unsigned char* inPtr = task->ptr;
-        size_t inSize = task->size;
+        unsigned char* inPtr;
+        const size_t inSize = task->size;
+
+        if (!mapFile(task->filename.c_str(), inSize, inPtr)) {
+            printf("Failed to map file %s in memory\n", task->filename.c_str());
+            success = false;
+            delete task;
+            return GO_ON;
+        }
+
         // get an estimation of the maximum compression size
         unsigned long cmp_len = compressBound(inSize);
         // allocate memory to store compressed data in memory
         unsigned char* ptrOut = new unsigned char[cmp_len];
         if (compress(ptrOut, &cmp_len, (const unsigned char*)inPtr, inSize) != Z_OK) {
-            printf("Failed to compress file in memory\n");
+            printf("Failed to compress file %s in memory\n", task->filename.c_str());
             success = false;
             delete[] ptrOut;
             return GO_ON;
         }
-        task->ptr = ptrOut;
-        task->cmp_size = cmp_len;
 
         unmapFile(inPtr, inSize);
 
         const std::string outfile = task->filename + ".zip";
         // write the compressed data into disk
-        success &= writeFile(outfile, task->ptr, task->cmp_size);
+        success &= writeFile(outfile, ptrOut, cmp_len);
         if (success && REMOVE_ORIGIN) {
             unlink(task->filename.c_str());
         }
-        delete[] task->ptr;
+        delete[] ptrOut;
         delete task;
         return GO_ON;
     }
 
     void svc_end() {
         if (!success) {
-            printf("Comprssor stage: Exiting with (some) Error(s)\n");
+            printf("Compressor stage: Exiting with (some) Error(s)\n");
             return;
         }
     }
@@ -177,8 +176,6 @@ int main(int argc, char* argv[]) {
     }
     bool success = true;
     success &= emitter.success;
-    for (auto &worker : workers)
-        success &= ((Worker*)(worker.get()))->success;
     if (success)
         printf("Done.\n");
 
