@@ -138,7 +138,7 @@ struct Compress : ff_node_t<Task> {
 
     void svc_end() {
         if (!success) {
-            printf("Comprssor stage: Exiting with (some) Error(s)\n");
+            printf("Compressor stage: Exiting with (some) Error(s)\n");
             return;
         }
     }
