@@ -1,49 +1,69 @@
 /*
- * Simple file compressor using miniz and the FastFlow pipeline.
+ * Simple file compressor using miniz and the FastFlow farm.
  *
  * miniz source code: https://github.com/richgel999/miniz
  * https://code.google.com/archive/p/miniz/
  *
  */
-/* Author: Massimo Torquati <massimo.torquati@unipi.it>
+/* Author: Michele Zoncheddu <m.zoncheddu@studenti.unipi.it>
  * This code is a mix of POSIX C code and some C++ library call
  * (mainly for strings manipulation).
  */
 
 #include <miniz.h>
 
+#include <cmath>
 #include <iostream>
 #include <string>
 
 #include <ff/ff.hpp>
-#include <ff/pipeline.hpp>
+#include <ff/farm.hpp>
 
 #include <utility.hpp>
 
+#define BIGFILE_LOW_THRESHOLD 5 // MB
+
 using namespace ff;
 
+constexpr long THRESHOLD = BIGFILE_LOW_THRESHOLD * 1000000; // from MB to bytes
+
 struct Task {
-    Task(unsigned char* ptr, size_t size, const std::string& name)
-        : ptr(ptr), size(size), cmp_size(0), filename(name) {}
+    Task(unsigned char* ptr, size_t size, const std::string& name, int part)
+        : ptr(ptr), size(size), filename(name), part(part) {}
 
     unsigned char* ptr;
-    size_t         size;
-    size_t         cmp_size;
+    const size_t size;
     const std::string filename;
+    const int part;
 };
 
-// 1st stage
-struct Read : ff_node_t<Task> {
-    Read(const char** argv, int argc) : argv(argv), argc(argc) {}
+struct Emitter : ff_node_t<Task> {
+    Emitter(const char** argv, int argc) : argv(argv), argc(argc) {}
 
     // ------------------- utility functions
     // It memory maps the input file and then assigns a task to one Worker
     bool doWork(const std::string& fname, size_t size) {
         unsigned char* ptr = nullptr;
-        if (!mapFile(fname.c_str(), size, ptr))
-            return false;
-        Task* t = new Task(ptr, size, fname);
-        ff_send_out(t);  // sending to the next stage
+        if (size <= THRESHOLD) {
+            if (!mapFile(fname.c_str(), size, ptr))
+                return false;
+            Task* t = new Task(ptr, size, fname, 0);
+            ff_send_out(t);
+        } else {
+            int part_n = 1;
+            long remaining = size;
+            long len;
+            while (remaining > 0) {
+                len = std::min(THRESHOLD, remaining);
+                if (!mapFile(fname.c_str(), len, ptr))
+                    return false;
+                Task* t = new Task(ptr, len, fname, part_n);
+                ff_send_out(t);
+                ptr += THRESHOLD;
+                remaining -= THRESHOLD; // or THRESHOLD + 1 ??? diff or md5
+                ++part_n;
+            }
+        }
         return true;
     }
     // walks through the directory tree rooted in dname
@@ -113,26 +133,33 @@ struct Read : ff_node_t<Task> {
     bool success = true;
 };
 
-// 2nd stage
-struct Compress : ff_node_t<Task> {
+struct Worker : ff_node_t<Task> {
     Task* svc(Task* task) {
         unsigned char* inPtr = task->ptr;
-        size_t inSize = task->size;
+        const size_t inSize = task->size;
+        const int part = task->part;
+
         // get an estimation of the maximum compression size
         unsigned long cmp_len = compressBound(inSize);
         // allocate memory to store compressed data in memory
         unsigned char* ptrOut = new unsigned char[cmp_len];
         if (compress(ptrOut, &cmp_len, (const unsigned char*)inPtr, inSize) != Z_OK) {
-            printf("Failed to compress file in memory\n");
+            printf("Failed to compress file %s in memory\n", task->filename.c_str());
             success = false;
             delete[] ptrOut;
             return GO_ON;
         }
-        task->ptr = ptrOut;
-        task->cmp_size = cmp_len;
-        ff_send_out(task);
 
         unmapFile(inPtr, inSize);
+
+        const std::string outfile = task->filename + (part > 0 ? "_part" + std::to_string(part) : "") + ".zip";
+        // write the compressed data into disk
+        success &= writeFile(outfile, ptrOut, cmp_len);
+        if (success && REMOVE_ORIGIN) {
+            unlink(task->filename.c_str());
+        }
+        delete[] ptrOut;
+        delete task;
         return GO_ON;
     }
 
@@ -145,60 +172,42 @@ struct Compress : ff_node_t<Task> {
     bool success = true;
 };
 
-// 3rd stage
-struct Write : ff_node_t<Task> {
+struct Collector : ff_node_t<Task> {
     Task* svc(Task* task) {
-        const std::string outfile = task->filename + ".zip";
-        // write the compressed data into disk
-        success &= writeFile(outfile, task->ptr, task->cmp_size);
-        if (success && REMOVE_ORIGIN) {
-            unlink(task->filename.c_str());
-        }
-        delete[] task->ptr;
-        delete task;
-        return GO_ON;
     }
-
-    void svc_end() {
-        if (!success) {
-            printf("Write stage: Exiting with (some) Error(s)\n");
-            return;
-        }
-    }
-
-    bool success = true;
 };
 
 static inline void usage(const char* argv0) {
     printf("--------------------\n");
-    printf("Usage: %s file-or-directory [file-or-directory]\n", argv0);
+    printf("Usage: %s nw file-or-directory [file-or-directory]\n", argv0);
     printf("\nModes: COMPRESS ONLY\n");
     printf("--------------------\n");
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
+    if (argc < 3) {
         usage(argv[0]);
         return -1;
     }
-    argc--;
+    const int nw = atoi(argv[1]);
+    argc-=2;
 
     ffTime(START_TIME);
-    Read reader(const_cast<const char**>(&argv[1]), argc);
-    Compress compressor;
-    Write writer;
-    ff_Pipe pipe(reader, compressor, writer);
-    if (pipe.run_and_wait_end() < 0) {
-        error("running pipeline\n");
+    Emitter emitter(const_cast<const char**>(&argv[2]), argc);
+    std::vector<std::unique_ptr<ff_node>> workers;
+    Collector collector;
+    for (int i = 0; i < nw; ++i)
+        workers.push_back(make_unique<Worker>());
+    ff_Farm<> farm(std::move(workers), emitter, collector);
+    if (farm.run_and_wait_end() < 0) {
+        error("running farm");
         return -1;
     }
     ffTime(STOP_TIME);
-    std::cout << "Time: " << ffTime(GET_TIME) << " (ms)" << std::endl;
+    std::cout << "Time with " << nw << " nw: " << ffTime(GET_TIME) << " (ms)" << std::endl;
 
     bool success = true;
-    success &= reader.success;
-    success &= compressor.success;
-    success &= writer.success;
+    success &= emitter.success;
     if (success)
         printf("Done.\n");
 

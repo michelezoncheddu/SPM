@@ -14,7 +14,7 @@
 # splitting threshold
 THSIZE=2M
 # where the compressor/decompressor executable is
-COMPDECOMP=/tmp/compdecomp
+COMPDECOMP=./compdecomp
 # sanity checks
 if [ ! -f  $COMPDECOMP ]; then
     echo "Error cannot find the compdecomp executable"

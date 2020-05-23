@@ -23,9 +23,10 @@
 using namespace ff;
 
 struct Task {
-    Task(size_t size, const std::string& name)
-        : size(size), filename(name) {}
+    Task(unsigned char* ptr, size_t size, const std::string& name)
+        : ptr(ptr), size(size), filename(name) {}
 
+    unsigned char* ptr;
     size_t size;
     const std::string filename;
 };
@@ -35,9 +36,13 @@ struct Emitter : ff_node_t<Task> {
 
     // ------------------- utility functions
     // It memory maps the input file and then assigns a task to one Worker
-    void doWork(const std::string& fname, size_t size) {
-        Task* t = new Task(size, fname);
+    bool doWork(const std::string& fname, size_t size) {
+        unsigned char* ptr = nullptr;
+        if (!mapFile(fname.c_str(), size, ptr))
+            return false;
+        Task* t = new Task(ptr, size, fname);
         ff_send_out(t);
+        return true;
     }
     // walks through the directory tree rooted in dname
     bool walkDir(const std::string& dname, size_t size) {
@@ -63,7 +68,8 @@ struct Emitter : ff_node_t<Task> {
                         error = true;
                 }
             } else {
-                doWork(filename, statbuf.st_size);
+                if (!doWork(filename, statbuf.st_size))
+                    error = true;
             }
         }
         if (errno != 0) {
@@ -87,7 +93,7 @@ struct Emitter : ff_node_t<Task> {
             if (S_ISDIR(statbuf.st_mode)) {
                 success &= walkDir(argv[i], statbuf.st_size);
             } else {
-                doWork(argv[i], statbuf.st_size);
+                success &= doWork(argv[i], statbuf.st_size);
             }
         }
         return EOS;
@@ -107,15 +113,8 @@ struct Emitter : ff_node_t<Task> {
 
 struct Worker : ff_node_t<Task> {
     Task* svc(Task* task) {
-        unsigned char* inPtr;
+        unsigned char* inPtr = task->ptr;
         const size_t inSize = task->size;
-
-        if (!mapFile(task->filename.c_str(), inSize, inPtr)) {
-            printf("Failed to map file %s in memory\n", task->filename.c_str());
-            success = false;
-            delete task;
-            return GO_ON;
-        }
 
         // get an estimation of the maximum compression size
         unsigned long cmp_len = compressBound(inSize);
@@ -152,21 +151,23 @@ struct Worker : ff_node_t<Task> {
 
 static inline void usage(const char* argv0) {
     printf("--------------------\n");
-    printf("Usage: %s file-or-directory [file-or-directory]\n", argv0);
+    printf("Usage: %s nw file-or-directory [file-or-directory]\n", argv0);
     printf("\nModes: COMPRESS ONLY\n");
     printf("--------------------\n");
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
+    if (argc < 3) {
         usage(argv[0]);
         return -1;
     }
-    argc--;
+    const int nw = atoi(argv[1]);
+    argc-=2;
 
-    Emitter emitter(const_cast<const char**>(&argv[1]), argc);
+    ffTime(START_TIME);
+    Emitter emitter(const_cast<const char**>(&argv[2]), argc);
     std::vector<std::unique_ptr<ff_node>> workers;
-    for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < nw; ++i)
         workers.push_back(make_unique<Worker>());
     ff_Farm<> farm(std::move(workers), emitter);
     farm.remove_collector();
@@ -174,6 +175,9 @@ int main(int argc, char* argv[]) {
         error("running farm");
         return -1;
     }
+    ffTime(STOP_TIME);
+    std::cout << "Time with " << nw << " nw: " << ffTime(GET_TIME) << " (ms)" << std::endl;
+
     bool success = true;
     success &= emitter.success;
     if (success)

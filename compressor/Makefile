@@ -28,7 +28,7 @@ ifndef FF_ROOT
 FF_ROOT		= /usr/local/include/fastflow
 endif
 
-CXX		    = g++ -std=c++17
+CXX		    = g++-9 -std=c++17
 INCLUDES	= -I . -I miniz
 CXXFLAGS  	= -DFF_BOUNDED_BUFFER -DDEFAULT_BUFFER_CAPACITY=512 -DBLOCKING_MODE -DNO_DEFAULT_MAPPING #-DTRACE_FASTFLOW 
 
@@ -37,7 +37,8 @@ OPTFLAGS	= -O3 -finline-functions -DNDEBUG
 
 TARGETS		= compdecomp	\
 			  ffc_pipe		\
-			  ffc_farm
+			  ffc_farm		\
+			  ffc_farm2
 
 .PHONY: all clean cleanall
 .SUFFIXES: .cpp 
@@ -57,6 +58,8 @@ ffc_pipe: ffc_pipe.cpp utility.hpp
 ffc_farm: ffc_farm.cpp utility.hpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -I$(FF_ROOT) $(OPTFLAGS) -o $@ $< ./miniz/miniz.c $(LDFLAGS)
 
+ffc_farm2: ffc_farm2.cpp utility.hpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -I$(FF_ROOT) $(OPTFLAGS) -o $@ $< ./miniz/miniz.c $(LDFLAGS)
 
 clean: 
 	rm -f $(TARGETS) 
