@@ -21,7 +21,9 @@
 
 #include <utility.hpp>
 
-#define BIGFILE_LOW_THRESHOLD 5 // MB
+#ifndef BIGFILE_LOW_THRESHOLD
+    #define BIGFILE_LOW_THRESHOLD 5 // MB
+#endif
 
 using namespace ff;
 
