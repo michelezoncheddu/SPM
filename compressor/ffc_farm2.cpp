@@ -28,13 +28,14 @@ using namespace ff;
 constexpr long THRESHOLD = BIGFILE_LOW_THRESHOLD * 1000000; // from MB to bytes
 
 struct Task {
-    Task(unsigned char* ptr, size_t size, const std::string& name, int part)
-        : ptr(ptr), size(size), filename(name), part(part) {}
+    Task(unsigned char* ptr, size_t size, const std::string& name, int part, int totalsize)
+        : ptr(ptr), size(size), filename(name), part(part), totalsize(totalsize) {}
 
     unsigned char* ptr;
     const size_t size;
     const std::string filename;
     const int part;
+    const size_t totalsize;
 };
 
 struct Emitter : ff_node_t<Task> {
@@ -44,25 +45,20 @@ struct Emitter : ff_node_t<Task> {
     // It memory maps the input file and then assigns a task to one Worker
     bool doWork(const std::string& fname, size_t size) {
         unsigned char* ptr = nullptr;
+        if (!mapFile(fname.c_str(), size, ptr))
+            return false;
         if (size <= THRESHOLD) {
-            if (!mapFile(fname.c_str(), size, ptr))
-                return false;
-            Task* t = new Task(ptr, size, fname, 0);
+            Task* t = new Task(ptr, size, fname, 0, size);
             ff_send_out(t);
         } else {
-            int part_n = 1;
-            long remaining = size;
-            long len;
-            while (remaining > 0) {
-                len = std::min(THRESHOLD, remaining);
-                if (!mapFile(fname.c_str(), len, ptr))
-                    return false;
-                Task* t = new Task(ptr, len, fname, part_n);
+            const int parts = ceil(size * 1.0 / THRESHOLD);
+            for (int i = 0; i < parts - 1; ++i) {
+                Task* t = new Task(ptr + THRESHOLD * i, THRESHOLD, fname, i + 1, size);
                 ff_send_out(t);
-                ptr += THRESHOLD;
-                remaining -= THRESHOLD; // or THRESHOLD + 1 ??? diff or md5
-                ++part_n;
             }
+            // last part
+            Task* t = new Task(ptr + THRESHOLD * (parts - 1), size % THRESHOLD, fname, parts, size);
+            ff_send_out(t);
         }
         return true;
     }
@@ -138,7 +134,8 @@ struct Worker : ff_node_t<Task> {
         unsigned char* inPtr = task->ptr;
         const size_t inSize = task->size;
         const int part = task->part;
-
+        const bool splitted = task->part > 0;
+        
         // get an estimation of the maximum compression size
         unsigned long cmp_len = compressBound(inSize);
         // allocate memory to store compressed data in memory
@@ -150,16 +147,20 @@ struct Worker : ff_node_t<Task> {
             return GO_ON;
         }
 
-        unmapFile(inPtr, inSize);
+        if (!splitted)
+            unmapFile(inPtr, inSize);
 
-        const std::string outfile = task->filename + (part > 0 ? "_part" + std::to_string(part) : "") + ".zip";
+        const std::string outfile = task->filename + (splitted ? ".part" + std::to_string(part) : "") + ".zip";
         // write the compressed data into disk
         success &= writeFile(outfile, ptrOut, cmp_len);
-        if (success && REMOVE_ORIGIN) {
+        if (success && REMOVE_ORIGIN)
             unlink(task->filename.c_str());
-        }
         delete[] ptrOut;
-        delete task;
+
+        if (splitted) // send to the collector
+            return task;
+        else 
+            delete task;
         return GO_ON;
     }
 
@@ -174,7 +175,25 @@ struct Worker : ff_node_t<Task> {
 
 struct Collector : ff_node_t<Task> {
     Task* svc(Task* task) {
+        if (auto item = map.find(task->filename); item == map.end()) {
+            map[task->filename] = {task->totalsize - task->size, task->ptr};
+        } else {
+            map[task->filename].first -= task->size;
+            if (task->part == 1) // update the starting pointer
+                map[task->filename].second = task->ptr;
+            if (map[task->filename].first == 0) { // all data received
+                unmapFile(map[task->filename].second, task->totalsize);
+                map.erase(item);
+                const std::string command = "tar cf " + task->filename + ".zip " + task->filename + ".part*.zip";
+                if (system(command.c_str()) != 0)
+                    std::cout << "Error executing: " << command << std::endl;
+            }
+        }
+        delete task;
+        return GO_ON;
     }
+
+    std::unordered_map<std::string, std::pair<size_t, unsigned char*>> map;
 };
 
 static inline void usage(const char* argv0) {

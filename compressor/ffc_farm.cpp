@@ -132,9 +132,8 @@ struct Worker : ff_node_t<Task> {
         const std::string outfile = task->filename + ".zip";
         // write the compressed data into disk
         success &= writeFile(outfile, ptrOut, cmp_len);
-        if (success && REMOVE_ORIGIN) {
+        if (success && REMOVE_ORIGIN)
             unlink(task->filename.c_str());
-        }
         delete[] ptrOut;
         delete task;
         return GO_ON;
