@@ -165,10 +165,12 @@ int main(int argc, char* argv[]) {
 
     ffTime(START_TIME);
     Emitter emitter(const_cast<const char**>(&argv[2]), argc);
-    std::vector<std::unique_ptr<ff_node>> workers;
-    for (int i = 0; i < nw; ++i)
-        workers.push_back(make_unique<Worker>());
-    ff_Farm<> farm(std::move(workers), emitter);
+    ff_Farm<> farm([&]() {
+            std::vector<std::unique_ptr<ff_node>> W;
+            for (int i = 0; i < nw; ++i)
+                W.push_back(make_unique<Worker>());
+            return W;
+        } (), emitter);
     farm.remove_collector();
     if (farm.run_and_wait_end() < 0) {
         error("running farm");

@@ -53,6 +53,7 @@ struct Emitter : ff_node_t<Task> {
             Task* t = new Task(ptr, size, fname, 0, size);
             ff_send_out(t);
         } else {
+            // compute how many parts are needed
             const int parts = ceil(size * 1.0 / THRESHOLD);
             for (int i = 0; i < parts - 1; ++i) {
                 Task* t = new Task(ptr + THRESHOLD * i, THRESHOLD, fname, i + 1, size);
@@ -195,6 +196,7 @@ struct Collector : ff_node_t<Task> {
         return GO_ON;
     }
 
+    // <filename, <remaining_bytes, starting_pointer>>
     std::unordered_map<std::string, std::pair<size_t, unsigned char*>> map;
 };
 
@@ -215,11 +217,13 @@ int main(int argc, char* argv[]) {
 
     ffTime(START_TIME);
     Emitter emitter(const_cast<const char**>(&argv[2]), argc);
-    std::vector<std::unique_ptr<ff_node>> workers;
     Collector collector;
-    for (int i = 0; i < nw; ++i)
-        workers.push_back(make_unique<Worker>());
-    ff_Farm<> farm(std::move(workers), emitter, collector);
+    ff_Farm<> farm([&]() {
+            std::vector<std::unique_ptr<ff_node>> W;
+            for (int i = 0; i < nw; ++i)
+                W.push_back(make_unique<Worker>());
+            return W;
+        } (), emitter, collector);
     if (farm.run_and_wait_end() < 0) {
         error("running farm");
         return -1;
